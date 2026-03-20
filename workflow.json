@@ -1,0 +1,396 @@
+{
+  "name": "⚡ Upwork Job Alert — AI Filtered",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const job = $input.first().json;\n\nconst title = job.job_title || 'No title';\nconst snippet = (job.job_snippet || '').slice(0, 180);\nconst date = job.job_date || 'Unknown';\nconst link = job.job_link || '#';\n\nconst message = [\n  '━━━━━━━━━━━━━━━━━━',\n  '⚡*UPWORK JOB ALERT*',\n  '━━━━━━━━━━━━━━━━━━',\n  '',\n  `💼 *${title}*`,\n  '',\n  `🎯 ${snippet}...`,\n  '',\n  `🗓 *Posted:* ${date}`,\n  '',\n  `🚀 [Apply Now](${link})`,\n  '',\n  '━━━━━━━━━━━━━━━━━━',\n  '🤖 _Filtered by your n8n bot_'\n].join('\\n');\n\nreturn [{ json: { message } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-144, 144],
+      "id": "d6f65a3c-5501-4df8-a57e-5978495710dd",
+      "name": "Format Message"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 12,15,18,21 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-1952, 144],
+      "id": "b66bc74d-1c7f-4262-85c1-0dbfc1a28d24",
+      "name": "Every 3hrs (12-9PM)"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "=google"
+            },
+            {
+              "name": "q",
+              "value": "=n8n automation upwork.com/jobs"
+            },
+            {
+              "name": "api_key",
+              "value": "=YOUR_SERPAPI_KEY"
+            },
+            {
+              "name": "num",
+              "value": "=10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-1696, 32],
+      "id": "41a02c13-6847-4c77-8baa-6ede5b7f0afd",
+      "name": "🔍 Search: n8n Automation"
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "engine",
+              "value": "=google"
+            },
+            {
+              "name": "q",
+              "value": "=frontend developer upwork.com/jobs"
+            },
+            {
+              "name": "api_key",
+              "value": "=YOUR_SERPAPI_KEY"
+            },
+            {
+              "name": "num",
+              "value": "=10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-1696, 224],
+      "id": "c3b37cd7-9674-4ab7-b01c-7a176afa3f55",
+      "name": "🔍 Search: Frontend Dev"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst organicResults = data.organic_results || [];\n\n// Keep only Upwork job links\nconst upworkJobs = organicResults.filter(result => \n  result.link && \n  result.link.includes('upwork.com/freelance-jobs/apply')\n);\n\nreturn upworkJobs.map(job => ({\n  json: {\n    title: job.title,\n    link: job.link,\n    snippet: job.snippet,\n    date: job.date || 'unknown'\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1472, 128],
+      "id": "32c326c9-36ba-4df4-bcd5-d72b2ded8688",
+      "name": "🧹 Extract Upwork Jobs"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of $input.all()) {\n  const dateStr = item.json.date || '';\n  \n  // Pass if posted today, yesterday, 1 day ago, 2 days ago, or hours ago\n  const isRecent = \n    dateStr.includes('hour') ||\n    dateStr.includes('just') ||\n    dateStr.includes('minute') ||\n    dateStr.includes('1 day') ||\n    dateStr.includes('2 day') ||\n    dateStr.includes('today') ||\n    dateStr.includes('yesterday');\n  \n  if (isRecent) {\n    results.push(item);\n  }\n}\n\nreturn results.length > 0 ? results : [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1248, 128],
+      "id": "167b1778-5fe8-44ce-aee8-ababcd387f2e",
+      "name": "📅 Filter: Last 48hrs"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "292a894a-5a95-443a-ac7d-5a3168255060",
+              "name": "job_title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "22ffd51f-ab96-49bd-b4d0-0324bd16b092",
+              "name": "job_link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "3008fd8d-5805-4310-acf9-d90f3bccfe34",
+              "name": "job_snippet",
+              "value": "={{ $json.snippet }}",
+              "type": "string"
+            },
+            {
+              "id": "a80e7f08-3a49-4431-8ba6-a2f887df48c0",
+              "name": "job_date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1024, 128],
+      "id": "28129105-1df7-45a6-ad93-ea51d08d7155",
+      "name": "💾 Save Job Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GROQ_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"max_tokens\": 10,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a job filter for Natnael, a freelance developer specializing in n8n automation, React, Next.js, and AI tools. Reply GOOD or BAD only.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ $json.job_title }} --- {{ $json.job_snippet }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-976, 352],
+      "id": "b7b986d0-8ba0-4fe1-bbeb-b25f8eafc22b",
+      "name": "🤖 AI Quality Filter"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-624, 144],
+      "id": "4c90ff2e-bdc6-4284-b8fa-780252bf6b26",
+      "name": "🔀 Merge Job + AI Result"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "70ccb889-64f8-4d2f-8aa2-3f5780103b99",
+              "leftValue": "={{ $json.choices[0].message.content.trim() }}",
+              "rightValue": "GOOD",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-368, 144],
+      "id": "7afcf85b-f49f-49d0-9753-4585646ddf70",
+      "name": "Is Good Match?"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [80, 144],
+      "id": "9b6c3e99-9b99-4fc7-bc47-7760a3be1ff8",
+      "name": "📲 Send Telegram Alert",
+      "webhookId": "16185094-e9ff-4f79-8752-f1a16eb73a61",
+      "credentials": {
+        "telegramApi": {
+          "id": "f2li96ynxdl8Js6n",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "📲 Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 3hrs (12-9PM)": {
+      "main": [
+        [
+          {
+            "node": "🔍 Search: n8n Automation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔍 Search: Frontend Dev",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Search: n8n Automation": {
+      "main": [
+        [
+          {
+            "node": "🧹 Extract Upwork Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Search: Frontend Dev": {
+      "main": [
+        [
+          {
+            "node": "🧹 Extract Upwork Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧹 Extract Upwork Jobs": {
+      "main": [
+        [
+          {
+            "node": "📅 Filter: Last 48hrs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 Filter: Last 48hrs": {
+      "main": [
+        [
+          {
+            "node": "💾 Save Job Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save Job Fields": {
+      "main": [
+        [
+          {
+            "node": "🤖 AI Quality Filter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔀 Merge Job + AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 AI Quality Filter": {
+      "main": [
+        [
+          {
+            "node": "🔀 Merge Job + AI Result",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔀 Merge Job + AI Result": {
+      "main": [
+        [
+          {
+            "node": "Is Good Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Good Match?": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a91fb8fe-95eb-4709-83f2-72c4b1ebcbcf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "960f85ff49bf00e9f33b90cdac7120c8851996d86aa1bc02db6d6d48b6d005f7"
+  },
+  "id": "u6WZXLgm1Za7UPPU",
+  "tags": []
+}
